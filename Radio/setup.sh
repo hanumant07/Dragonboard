@@ -44,7 +44,10 @@ function setup_audio {
 		printf "${YELLOW} You have specified that you are using a $audio_dev audio device."
 		printf "${YELLLOW} Setting up $audio_dev audio device.\n"
 		cd $radio_ctrl/settings/$audio_dev
+		#Deploy files
 		sudo rsync -aH etc/ /etc/
+		#change from pulse to alsa
+		sudo sed -i 's/pulse/alsa/' /etc/libao.conf
 	fi
 }
 
