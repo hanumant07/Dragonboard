@@ -3,8 +3,8 @@
 # See manpage for a description of the config keys
 #
 # User
-user = ###########
-password = #######
+user = __user__
+password = __pass__
 # or
 #password_command = gpg --decrypt ~/password
 
@@ -38,7 +38,7 @@ act_volup = )
 #audio_quality = low
 autostart_station = 371740724004204629
 
-event_command = $HOME/.config/pianobar/scripts/eventcmd.sh
+event_command = __eventscript__
 #fifo = /home/pi/.config/pianobar/ctl
 #sort = quickmix_10_name_az
 #love_icon = [+]

@@ -1,11 +1,20 @@
 #!/bin/bash
 
+NONE='\033[00m'
+RED='\033[01;31m'
+GREEN='\033[01;32m'
+YELLOW='\033[01;33m'
+PURPLE='\033[01;35m'
+CYAN='\033[01;36m'
+WHITE='\033[01;37m'
+BOLD='\033[1m'
+UNDERLINE='\033[4m'
+
 radio_ctrl=`pwd`
 cd ..
-staging=`pwd`
-GREEN='\033[0;31m'
+audio_dev="usb"
 
-printf "${GREEN}.Installing various packages"
+printf "${GREEN}.Installing various packages\n${YELLOW}"
 
 #python packages
 sudo apt-get -y install python-smbus i2c-tools python-pip
@@ -16,36 +25,61 @@ sudo apt-get -y install pianobar
 #install Pyro4
 pip install Pyro4
 
-printf "${GREEN}.Get pexpect and install"
+function pexpect_install {
+	if [ -f $HOME/pexpect-2.3.tar.gz ]; then
+		return
+	fi
+	printf "${GREEN}.Get pexpect and install\n${YELLOW}"
+	wget http://pexpect.sourceforge.net/pexpect-2.3.tar.gz
+	tar xzf pexpect-2.3.tar.gz
+	cd pexpect-2.3
+	sudo python ./setup.py install
+	cd ..
+	sudo rm -r pexpect-2.3
+	return
+}
 
-wget http://pexpect.sourceforge.net/pexpect-2.3.tar.gz
-tar xzf pexpect-2.3.tar.gz
-cd pexpect-2.3
-sudo python ./setup.py install
-cd ..
-sudo rm -r pexpect-2.3
+function setup_audio {
+	if [ "$audio_dev" != "default" ]; then
+		printf "${YELLOW} You have specified that you are using a $audio_dev audio device."
+		printf "${YELLLOW} Setting up $audio_dev audio device.\n"
+		cd $radio_ctrl/settings/$audio_dev
+		sudo rsync -aH etc/ /etc/
+	fi
+}
 
-printf "${GREEN}. Get python sources"
+function setup_pandora {
+	cd
+	mkdir -p .config/pianobar
+	mkdir -p .config/pianobar/scripts
 
-cd
-mkdir -p .config/pianobar
-mkdir -p .config/pianobar/scripts
+	cd .config/pianobar
+	ln -sf $radio_ctrl/settings/config .
 
-cd .config/pianobar
-ln -s $radio_ctrl/settings/config .
+	printf "${GREEN}\nSetting up your pandora radio\n"
+	printf "${GREEN}.\nEnter username for pandora${NONE}\n"
+	read uname
 
-printf "${GREEN}. Setting up TLS for pianobar"
-fingerprint=`openssl s_client -connect tuner.pandora.com:443 < /dev/null 2> /dev/null | openssl x509 -noout -fingerprint | tr -d ':' | cut -d'=' -f2` && echo tls_fingerprint = $fingerprint >> ~/.config/pianobar/config
+	sed -i "s/__user__/$uname/" ~/.config/pianobar/config
 
-cd scripts
-ln -s $radio_ctrl/settings/eventcmd.sh .
+	printf "${GREEN}. Enter password for pandora${NONE}\n"
+	read psswd
 
-printf "${GREEN} You have specified that you are using a $1 audio device."
-printf "${GREEN} Setting up $1 audio device."
+	sed -i "s/__pass__/$psswd/" ~/.config/pianobar/config
 
+	script_path="$HOME/.config/pianobar/scripts/eventcmd.sh"
+	sed -i "s@__eventscript__@$script_path@" ~/.config/pianobar/config
+
+	printf "${GREEN}. Setting up TLS for pianobar\n${YELLOW}"
+	fingerprint=`openssl s_client -connect tuner.pandora.com:443 < /dev/null 2> /dev/null | openssl x509 -noout -fingerprint | tr -d ':' | cut -d'=' -f2` && echo tls_fingerprint = $fingerprint >> ~/.config/pianobar/config
+	cd scripts
+	ln -sf $radio_ctrl/settings/eventcmd.sh .
+	cd ~/.config/pianobar
+
+	printf "${YELLOW}\nReboot to finish installation. After reboot\n"
+	printf "${YELLOW} Type pianobar to run music. Type )))))) to increase volume\n${NONE}"
+}
+pexpect_install
+setup_audio
+setup_pandora
 cd $radio_ctrl
-sudo mv settings/$1_audio/asound.conf /etc/
-
-cd ~/.config/pianobar
-printf "${GREEN} Type nano config. Enter pandora login credentials near top of file user = YOUR_EMAIL_ADDRESS password = YOUR_PASSWORD"
-printf "${GREEN} Then you should be able to type pianobar on your commandline and listen to music. Type )))))) to increase volume"
